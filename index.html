@@ -1,0 +1,1670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SentriX - Emergency dashboard system</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #dc2626;
+            --secondary-color: #2563eb;
+            --success-color: #16a34a;
+            --warning-color: #ea580c;
+            --info-color: #0891b2;
+            
+            /* Light mode - Professional & Clean */
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8fafc;
+            --bg-tertiary: #f1f5f9;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+            --glow-red: 0 0 20px rgba(220, 38, 38, 0.15);
+            --glow-blue: 0 0 20px rgba(37, 99, 235, 0.15);
+            --glow-green: 0 0 20px rgba(22, 163, 74, 0.15);
+            --glow-orange: 0 0 20px rgba(234, 88, 12, 0.15);
+        }
+
+        [data-theme="dark"] {
+            /* Dark mode - Professional & Easy on Eyes */
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --card-bg: #1e293b;
+            --border-color: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.25), 0 2px 4px -1px rgba(0, 0, 0, 0.15);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.25), 0 4px 6px -2px rgba(0, 0, 0, 0.15);
+            --glow-red: 0 0 20px rgba(220, 38, 38, 0.25);
+            --glow-blue: 0 0 20px rgba(37, 99, 235, 0.25);
+            --glow-green: 0 0 20px rgba(22, 163, 74, 0.25);
+            --glow-orange: 0 0 20px rgba(234, 88, 12, 0.25);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            position: relative;
+            overflow-x: hidden;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(220, 38, 38, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(30, 64, 175, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(5, 150, 105, 0.03) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.6;
+        }
+
+        /* Header */
+        header {
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 0;
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            align-items: center;
+            gap: 2rem;
+            position: relative;
+        }
+
+        .header-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color), var(--success-color));
+            animation: pulse 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+        }
+
+        .logo i {
+            color: var(--primary-color);
+            font-size: 2rem;
+            filter: drop-shadow(0 0 10px rgba(220, 38, 38, 0.3));
+            animation: emergencyPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes emergencyPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 50px;
+            padding: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .theme-toggle:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .theme-option {
+            padding: 0.5rem 0.75rem;
+            border-radius: 25px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .theme-option.active {
+            background: var(--secondary-color);
+            color: white;
+        }
+
+        .theme-option:not(.active) {
+            color: var(--text-secondary);
+        }
+
+        .theme-option:not(.active):hover {
+            background: var(--bg-tertiary);
+        }
+
+        .emergency-contacts {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .emergency-btn {
+            background: linear-gradient(135deg, var(--primary-color), #b91c1c);
+            color: white;
+            border: 1px solid rgba(220, 38, 38, 0.3);
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.8rem;
+            letter-spacing: 0.025em;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .emergency-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .emergency-btn:hover::before {
+            left: 100%;
+        }
+
+        .emergency-btn:hover {
+            background: linear-gradient(135deg, #b91c1c, var(--primary-color));
+            transform: translateY(-2px);
+            box-shadow: var(--glow-red), var(--shadow-lg);
+        }
+
+        .emergency-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Professional Layout Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .dashboard-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        /* Critical Alert Banner */
+        .critical-banner {
+            background: linear-gradient(135deg, var(--primary-color), #b91c1c);
+            border: 1px solid rgba(220, 38, 38, 0.3);
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            box-shadow: var(--glow-red), var(--shadow-lg);
+            animation: alertPulse 2s ease-in-out infinite;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .critical-banner::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+
+        @keyframes alertPulse {
+            0%, 100% { box-shadow: var(--glow-red), var(--shadow-lg); }
+            50% { box-shadow: 0 0 30px rgba(220, 38, 38, 0.4), var(--shadow-lg); }
+        }
+
+        .critical-banner i {
+            font-size: 1.75rem;
+            animation: blink 1s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .banner-content {
+            flex: 1;
+        }
+
+        .banner-title {
+            font-weight: 700;
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .banner-message {
+            font-size: 0.95rem;
+            opacity: 0.9;
+        }
+
+        /* Stats Cards */
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 1.75rem;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, var(--secondary-color), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .stat-card:hover::before {
+            opacity: 1;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-6px);
+            box-shadow: var(--shadow-lg);
+            border-color: var(--secondary-color);
+        }
+
+        .stat-card.hospitals {
+            border-left: 4px solid var(--secondary-color);
+        }
+
+        .stat-card.ambulances {
+            border-left: 4px solid var(--success-color);
+        }
+
+        .stat-card.blood-banks {
+            border-left: 4px solid var(--warning-color);
+        }
+
+        .stat-card.emergency {
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1.25rem;
+        }
+
+        .stat-content {
+            flex: 1;
+        }
+
+        .stat-value {
+            font-size: 2.75rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            flex-shrink: 0;
+        }
+
+        .stat-card.hospitals .stat-icon {
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(37, 99, 235, 0.04));
+            color: var(--secondary-color);
+            border: 1px solid rgba(37, 99, 235, 0.15);
+        }
+
+        .stat-card.ambulances .stat-icon {
+            background: linear-gradient(135deg, rgba(22, 163, 74, 0.12), rgba(22, 163, 74, 0.04));
+            color: var(--success-color);
+            border: 1px solid rgba(22, 163, 74, 0.15);
+        }
+
+        .stat-card.blood-banks .stat-icon {
+            background: linear-gradient(135deg, rgba(234, 88, 12, 0.12), rgba(234, 88, 12, 0.04));
+            color: var(--warning-color);
+            border: 1px solid rgba(234, 88, 12, 0.15);
+        }
+
+        .stat-card.emergency .stat-icon {
+            background: linear-gradient(135deg, rgba(220, 38, 38, 0.12), rgba(220, 38, 38, 0.04));
+            color: var(--primary-color);
+            border: 1px solid rgba(220, 38, 38, 0.15);
+        }
+
+        .stat-status {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-top: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .status-available {
+            background: rgba(22, 163, 74, 0.08);
+            color: var(--success-color);
+            border: 1px solid rgba(22, 163, 74, 0.15);
+        }
+
+        .status-limited {
+            background: rgba(234, 88, 12, 0.08);
+            color: var(--warning-color);
+            border: 1px solid rgba(234, 88, 12, 0.15);
+        }
+
+        .status-unavailable {
+            background: rgba(220, 38, 38, 0.08);
+            color: var(--primary-color);
+            border: 1px solid rgba(220, 38, 38, 0.15);
+        }
+
+        /* Main Content Grid */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Map Container */
+        .map-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+        }
+
+        #map {
+            height: 500px;
+            width: 100%;
+            background: var(--darker-bg);
+        }
+
+        .map-controls {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            z-index: 500;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .map-control-btn {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            width: 44px;
+            height: 44px;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .map-control-btn:hover {
+            background: var(--secondary-color);
+            border-color: var(--secondary-color);
+            color: white;
+            transform: scale(1.05);
+            box-shadow: var(--glow-blue), var(--shadow-lg);
+        }
+
+        .map-control-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .sidebar-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-card:hover {
+            border-color: var(--secondary-color);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .sidebar-card h3 {
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            font-size: 1.125rem;
+        }
+
+        .resource-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .resource-item {
+            padding: 1rem;
+            background: var(--darker-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .resource-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+            transition: left 0.3s;
+        }
+
+        .resource-item:hover::before {
+            left: 100%;
+        }
+
+        .resource-item:hover {
+            transform: translateX(4px);
+            box-shadow: var(--shadow);
+            background: rgba(37, 99, 235, 0.04);
+        }
+
+        .resource-item.hospital {
+            border-left-color: var(--secondary-color);
+        }
+
+        .resource-item.ambulance {
+            border-left-color: var(--success-color);
+        }
+
+        .resource-item.blood-bank {
+            border-left-color: var(--warning-color);
+        }
+
+        .resource-name {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            color: var(--text-primary);
+        }
+
+        .resource-info {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.25rem;
+        }
+
+        .resource-distance {
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        /* Alert Panel */
+        .alert-panel {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .alert-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary-color), var(--warning-color), var(--secondary-color));
+            border-radius: 12px 12px 0 0;
+        }
+
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .alert-header h3 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 1.125rem;
+        }
+
+        .alert-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .alert-item {
+            padding: 1rem;
+            border-radius: 8px;
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            position: relative;
+        }
+
+        .alert-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .alert-item.critical {
+            background: rgba(220, 38, 38, 0.06);
+            border-left: 4px solid var(--primary-color);
+            border-color: rgba(220, 38, 38, 0.12);
+        }
+
+        .alert-item.warning {
+            background: rgba(234, 88, 12, 0.06);
+            border-left: 4px solid var(--warning-color);
+            border-color: rgba(234, 88, 12, 0.12);
+        }
+
+        .alert-item.info {
+            background: rgba(37, 99, 235, 0.06);
+            border-left: 4px solid var(--secondary-color);
+            border-color: rgba(37, 99, 235, 0.12);
+        }
+
+        .alert-icon {
+            font-size: 1.25rem;
+            margin-top: 0.125rem;
+        }
+
+        .alert-item.critical .alert-icon {
+            color: var(--primary-color);
+            animation: alertBlink 2s ease-in-out infinite;
+        }
+
+        @keyframes alertBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .alert-item.warning .alert-icon {
+            color: var(--warning-color);
+        }
+
+        .alert-item.info .alert-icon {
+            color: var(--secondary-color);
+        }
+
+        .alert-content {
+            flex: 1;
+        }
+
+        .alert-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            color: var(--text-primary);
+        }
+
+        .alert-message {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        .alert-time {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
+        /* Loading Spinner */
+        .loading {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 9999;
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid var(--border-color);
+            border-top: 3px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .dashboard-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-container {
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            }
+        }
+
+        @media (max-width: 1024px) {
+            .header-content {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+                text-align: center;
+            }
+            
+            .emergency-contacts {
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+            
+            .theme-toggle {
+                justify-content: center;
+            }
+
+            #map {
+                height: 400px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 1rem;
+            }
+
+            .emergency-btn {
+                padding: 0.625rem 1rem;
+                font-size: 0.75rem;
+            }
+
+            .logo {
+                font-size: 1.25rem;
+            }
+            
+            .stat-value {
+                font-size: 2.25rem;
+            }
+            
+            .critical-banner {
+                flex-direction: column;
+                text-align: center;
+                gap: 0.75rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-container {
+                grid-template-columns: 1fr;
+            }
+
+            .emergency-btn {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.7rem;
+            }
+
+            .logo {
+                font-size: 1.125rem;
+            }
+
+            .stat-value {
+                font-size: 2rem;
+            }
+
+            .dashboard-row {
+                gap: 1rem;
+            }
+            
+            .theme-toggle {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* Custom Map Popup Styles */
+        .custom-popup {
+            min-width: 220px;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+        }
+
+        .popup-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .popup-info {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin: 0.25rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .popup-status {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Custom Leaflet Styles */
+        .leaflet-popup-content-wrapper {
+            background: var(--card-bg);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .leaflet-popup-content {
+            color: var(--text-primary);
+            margin: 0;
+        }
+
+        .leaflet-popup-tip {
+            background: var(--card-bg);
+        }
+
+        .leaflet-control-zoom {
+            border: 1px solid var(--border-color) !important;
+            background: var(--card-bg) !important;
+        }
+
+        .leaflet-control-zoom a {
+            background: var(--card-bg) !important;
+            color: var(--text-primary) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        .leaflet-control-zoom a:hover {
+            background: var(--secondary-color) !important;
+            color: white !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Spinner -->
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Header -->
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                <i class="fas fa-hospital"></i>
+                <span>NATIONAL EMERGENCY RESPONSE SYSTEM</span>
+            </div>
+            
+            <!-- Theme Toggle -->
+            <div class="theme-toggle" onclick="toggleTheme()">
+                <div class="theme-option active" id="lightTheme">
+                    <i class="fas fa-sun"></i>
+                    <span>Light</span>
+                </div>
+                <div class="theme-option" id="darkTheme">
+                    <i class="fas fa-moon"></i>
+                    <span>Dark</span>
+                </div>
+            </div>
+            
+            <div class="emergency-contacts">
+                <button class="emergency-btn" onclick="callEmergency('police')">
+                    <i class="fas fa-shield-alt"></i>
+                    POLICE: 100
+                </button>
+                <button class="emergency-btn" onclick="callEmergency('ambulance')">
+                    <i class="fas fa-ambulance"></i>
+                    AMBULANCE: 108
+                </button>
+                <button class="emergency-btn" onclick="callEmergency('fire')">
+                    <i class="fas fa-fire-extinguisher"></i>
+                    FIRE: 101
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Critical Alert Banner -->
+        <div class="critical-banner">
+            <i class="fas fa-exclamation-triangle"></i>
+            <div class="banner-content">
+                <div class="banner-title">SYSTEM STATUS: ACTIVE</div>
+                <div class="banner-message">All emergency response systems operational. Real-time monitoring enabled.</div>
+            </div>
+        </div>
+
+        <!-- Professional Dashboard Grid -->
+        <div class="dashboard-grid">
+            <!-- Stats Row -->
+            <div class="dashboard-row">
+                <div class="stats-container">
+                    <div class="stat-card hospitals" onclick="filterResources('hospital')">
+                        <div class="stat-header">
+                            <div class="stat-content">
+                                <div class="stat-value" id="hospitalCount">12</div>
+                                <div class="stat-label">Nearby Hospitals</div>
+                                <span class="stat-status status-available">8 Available</span>
+                            </div>
+                            <div class="stat-icon">
+                                <i class="fas fa-hospital"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card ambulances" onclick="filterResources('ambulance')">
+                        <div class="stat-header">
+                            <div class="stat-content">
+                                <div class="stat-value" id="ambulanceCount">7</div>
+                                <div class="stat-label">Active Ambulances</div>
+                                <span class="stat-status status-available">5 Available</span>
+                            </div>
+                            <div class="stat-icon">
+                                <i class="fas fa-ambulance"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card blood-banks" onclick="filterResources('blood-bank')">
+                        <div class="stat-header">
+                            <div class="stat-content">
+                                <div class="stat-value" id="bloodBankCount">5</div>
+                                <div class="stat-label">Blood Banks</div>
+                                <span class="stat-status status-limited">Limited Supply</span>
+                            </div>
+                            <div class="stat-icon">
+                                <i class="fas fa-tint"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card emergency" onclick="showEmergencyContacts()">
+                        <div class="stat-header">
+                            <div class="stat-content">
+                                <div class="stat-value" id="emergencyCount">24/7</div>
+                                <div class="stat-label">Emergency Hotline</div>
+                                <span class="stat-status status-available">Active</span>
+                            </div>
+                            <div class="stat-icon">
+                                <i class="fas fa-phone-alt"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alert and Map Row -->
+            <div class="dashboard-row">
+                <!-- Alert Panel -->
+                <div class="alert-panel">
+                    <div class="alert-header">
+                        <h3><i class="fas fa-satellite-dish"></i> LIVE EMERGENCY INTELLIGENCE</h3>
+                        <span style="color: var(--text-secondary); font-size: 0.875rem;">Last updated: <span id="alertTime">2 mins ago</span></span>
+                    </div>
+                    <div class="alert-list" id="alertList">
+                        <div class="alert-item critical">
+                            <div class="alert-icon"><i class="fas fa-exclamation-circle"></i></div>
+                            <div class="alert-content">
+                                <div class="alert-title">CRITICAL: HIGHWAY 101 INCIDENT</div>
+                                <div class="alert-message">Multiple vehicle collision reported. Emergency services dispatched. Expect delays.</div>
+                                <div class="alert-time">5 mins ago</div>
+                            </div>
+                        </div>
+                        <div class="alert-item warning">
+                            <div class="alert-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                            <div class="alert-content">
+                                <div class="alert-title">MEDICAL SUPPLY ALERT</div>
+                                <div class="alert-message">City General reports critical shortage of O-negative blood supply.</div>
+                                <div class="alert-time">15 mins ago</div>
+                            </div>
+                        </div>
+                        <div class="alert-item info">
+                            <div class="alert-icon"><i class="fas fa-info-circle"></i></div>
+                            <div class="alert-content">
+                                <div class="alert-title">DEPLOYMENT UPDATE</div>
+                                <div class="alert-message">Advanced life support unit ALS-7 deployed to downtown sector.</div>
+                                <div class="alert-time">30 mins ago</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Map Container -->
+                <div class="map-container">
+                    <div id="map"></div>
+                    <div class="map-controls">
+                        <button class="map-control-btn" onclick="centerMap()" title="Center Map">
+                            <i class="fas fa-crosshairs"></i>
+                        </button>
+                        <button class="map-control-btn" onclick="toggleFullscreen()" title="Fullscreen">
+                            <i class="fas fa-expand"></i>
+                        </button>
+                        <button class="map-control-btn" onclick="refreshMap()" title="Refresh">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resources and Actions Row -->
+            <div class="dashboard-row">
+                <!-- Resource List -->
+                <div class="sidebar-card">
+                    <h3><i class="fas fa-map-marked-alt"></i> TACTICAL RESOURCE OVERVIEW</h3>
+                    <div class="resource-list" id="resourceList">
+                        <div class="resource-item hospital" onclick="focusResource(1)">
+                            <div class="resource-name">CITY GENERAL HOSPITAL</div>
+                            <div class="resource-info">
+                                <i class="fas fa-route"></i>
+                                <span>1.2 km</span>
+                                <span class="resource-distance">• OPERATIONAL</span>
+                            </div>
+                        </div>
+                        <div class="resource-item ambulance" onclick="focusResource(2)">
+                            <div class="resource-name">AMBULANCE UNIT A-12</div>
+                            <div class="resource-info">
+                                <i class="fas fa-route"></i>
+                                <span>0.8 km</span>
+                                <span class="resource-distance">• ON DUTY</span>
+                            </div>
+                        </div>
+                        <div class="resource-item blood-bank" onclick="focusResource(3)">
+                            <div class="resource-name">CENTRAL BLOOD BANK</div>
+                            <div class="resource-info">
+                                <i class="fas fa-route"></i>
+                                <span>2.1 km</span>
+                                <span class="resource-distance">• ACTIVE</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="sidebar-card">
+                    <h3><i class="fas fa-bolt"></i> EMERGENCY ACTIONS</h3>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <button class="emergency-btn" style="width: 100%; justify-content: center;" onclick="requestAmbulance()">
+                            <i class="fas fa-ambulance"></i>
+                            DEPLOY AMBULANCE
+                        </button>
+                        <button class="emergency-btn" style="width: 100%; justify-content: center; background: var(--secondary-color);" onclick="findNearestHospital()">
+                            <i class="fas fa-hospital"></i>
+                            LOCATE NEAREST FACILITY
+                        </button>
+                        <button class="emergency-btn" style="width: 100%; justify-content: center; background: var(--warning-color);" onclick="checkBloodAvailability()">
+                            <i class="fas fa-tint"></i>
+                            CHECK BLOOD INVENTORY
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // Global Variables
+        let map;
+        let markers = [];
+        let userLocation = [28.6139, 77.2090]; // Default: New Delhi
+        let resources = [];
+
+        // Theme Toggle Function
+        function toggleTheme() {
+            const html = document.documentElement;
+            const lightTheme = document.getElementById('lightTheme');
+            const darkTheme = document.getElementById('darkTheme');
+            
+            if (html.getAttribute('data-theme') === 'dark') {
+                html.setAttribute('data-theme', 'light');
+                lightTheme.classList.add('active');
+                darkTheme.classList.remove('active');
+                localStorage.setItem('theme', 'light');
+            } else {
+                html.setAttribute('data-theme', 'dark');
+                darkTheme.classList.add('active');
+                lightTheme.classList.remove('active');
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // Initialize theme on load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check for saved theme preference
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            
+            const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+            
+            // Update toggle buttons
+            const lightTheme = document.getElementById('lightTheme');
+            const darkTheme = document.getElementById('darkTheme');
+            
+            if (theme === 'dark') {
+                darkTheme.classList.add('active');
+                lightTheme.classList.remove('active');
+            } else {
+                lightTheme.classList.add('active');
+                darkTheme.classList.remove('active');
+            }
+
+            initializeMap();
+            loadResources();
+            updateStats();
+            startRealTimeUpdates();
+            getUserLocation();
+        });
+
+        // Initialize Leaflet Map
+        function initializeMap() {
+            map = L.map('map').setView(userLocation, 13);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }).addTo(map);
+
+            // Add user location marker
+            const userIcon = L.divIcon({
+                html: '<i class="fas fa-user-circle" style="color: #3498db; font-size: 24px;"></i>',
+                iconSize: [30, 30],
+                className: 'user-location-marker'
+            });
+
+            L.marker(userLocation, { icon: userIcon }).addTo(map)
+                .bindPopup('Your Location')
+                .openPopup();
+        }
+
+        // Get User Location
+        function getUserLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        userLocation = [position.coords.latitude, position.coords.longitude];
+                        map.setView(userLocation, 13);
+                        loadResources();
+                    },
+                    (error) => {
+                        console.log('Location access denied, using default location');
+                    }
+                );
+            }
+        }
+
+        // Load Emergency Resources
+        function loadResources() {
+            // Simulated resource data - in real app, this would come from API
+            resources = [
+                {
+                    id: 1,
+                    type: 'hospital',
+                    name: 'City General Hospital',
+                    lat: userLocation[0] + 0.01,
+                    lng: userLocation[1] + 0.01,
+                    status: 'available',
+                    phone: '011-23456789',
+                    address: '123 Main Street',
+                    distance: '1.2 km'
+                },
+                {
+                    id: 2,
+                    type: 'ambulance',
+                    name: 'Ambulance #A-12',
+                    lat: userLocation[0] - 0.008,
+                    lng: userLocation[1] + 0.005,
+                    status: 'available',
+                    phone: '108',
+                    distance: '0.8 km'
+                },
+                {
+                    id: 3,
+                    type: 'blood-bank',
+                    name: 'Central Blood Bank',
+                    lat: userLocation[0] + 0.015,
+                    lng: userLocation[1] - 0.01,
+                    status: 'limited',
+                    phone: '011-34567890',
+                    address: '456 Health Avenue',
+                    distance: '2.1 km'
+                },
+                {
+                    id: 4,
+                    type: 'hospital',
+                    name: 'MediCare Center',
+                    lat: userLocation[0] - 0.012,
+                    lng: userLocation[1] - 0.008,
+                    status: 'available',
+                    phone: '011-45678901',
+                    address: '789 Medical Road',
+                    distance: '3.5 km'
+                },
+                {
+                    id: 5,
+                    type: 'ambulance',
+                    name: 'Ambulance #B-24',
+                    lat: userLocation[0] + 0.006,
+                    lng: userLocation[1] + 0.012,
+                    status: 'busy',
+                    phone: '108',
+                    distance: '1.8 km'
+                }
+            ];
+
+            displayResources();
+        }
+
+        // Display Resources on Map
+        function displayResources() {
+            // Clear existing markers
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+
+            resources.forEach(resource => {
+                const icon = getResourceIcon(resource.type, resource.status);
+                
+                const marker = L.marker([resource.lat, resource.lng], { icon })
+                    .addTo(map)
+                    .bindPopup(createPopupContent(resource));
+                
+                markers.push(marker);
+            });
+        }
+
+        // Get Resource Icon
+        function getResourceIcon(type, status) {
+            const iconColors = {
+                available: '#27ae60',
+                limited: '#f39c12',
+                busy: '#e74c3c'
+            };
+
+            const icons = {
+                hospital: 'fa-hospital',
+                ambulance: 'fa-ambulance',
+                'blood-bank': 'fa-tint'
+            };
+
+            return L.divIcon({
+                html: `<i class="fas ${icons[type]}" style="color: ${iconColors[status]}; font-size: 20px;"></i>`,
+                iconSize: [30, 30],
+                className: 'resource-marker'
+            });
+        }
+
+        // Create Popup Content
+        function createPopupContent(resource) {
+            const statusColors = {
+                available: '#27ae60',
+                limited: '#f39c12',
+                busy: '#e74c3c'
+            };
+
+            return `
+                <div class="custom-popup">
+                    <div class="popup-title">${resource.name}</div>
+                    <div class="popup-info"><i class="fas fa-phone"></i> ${resource.phone}</div>
+                    ${resource.address ? `<div class="popup-info"><i class="fas fa-map-marker-alt"></i> ${resource.address}</div>` : ''}
+                    <div class="popup-info"><i class="fas fa-route"></i> ${resource.distance}</div>
+                    <span class="popup-status" style="background: ${statusColors[resource.status]}20; color: ${statusColors[resource.status]}">
+                        ${resource.status.toUpperCase()}
+                    </span>
+                </div>
+            `;
+        }
+
+        // Update Statistics
+        function updateStats() {
+            const hospitals = resources.filter(r => r.type === 'hospital').length;
+            const ambulances = resources.filter(r => r.type === 'ambulance').length;
+            const bloodBanks = resources.filter(r => r.type === 'blood-bank').length;
+
+            document.getElementById('hospitalCount').textContent = hospitals;
+            document.getElementById('ambulanceCount').textContent = ambulances;
+            document.getElementById('bloodBankCount').textContent = bloodBanks;
+        }
+
+        // Filter Resources by Type
+        function filterResources(type) {
+            const filteredResources = resources.filter(r => r.type === type);
+            
+            // Clear and show only filtered markers
+            markers.forEach(marker => map.removeLayer(marker));
+            markers = [];
+
+            filteredResources.forEach(resource => {
+                const icon = getResourceIcon(resource.type, resource.status);
+                const marker = L.marker([resource.lat, resource.lng], { icon })
+                    .addTo(map)
+                    .bindPopup(createPopupContent(resource));
+                markers.push(marker);
+            });
+
+            // Update resource list in sidebar
+            updateResourceList(filteredResources);
+        }
+
+        // Update Resource List in Sidebar
+        function updateResourceList(resourcesToShow) {
+            const resourceList = document.getElementById('resourceList');
+            resourceList.innerHTML = '';
+
+            resourcesToShow.forEach(resource => {
+                const item = document.createElement('div');
+                item.className = `resource-item ${resource.type.replace('-', '-')}`;
+                item.onclick = () => focusResource(resource.id);
+                
+                item.innerHTML = `
+                    <div class="resource-name">${resource.name}</div>
+                    <div class="resource-info">
+                        <i class="fas fa-route"></i>
+                        <span>${resource.distance} away</span>
+                        <span class="resource-distance">• ${resource.status}</span>
+                    </div>
+                `;
+                
+                resourceList.appendChild(item);
+            });
+        }
+
+        // Focus on Specific Resource
+        function focusResource(resourceId) {
+            const resource = resources.find(r => r.id === resourceId);
+            if (resource) {
+                map.setView([resource.lat, resource.lng], 16);
+                
+                // Open popup for this resource
+                markers.forEach(marker => {
+                    const pos = marker.getLatLng();
+                    if (Math.abs(pos.lat - resource.lat) < 0.0001 && Math.abs(pos.lng - resource.lng) < 0.0001) {
+                        marker.openPopup();
+                    }
+                });
+            }
+        }
+
+        // Center Map on User Location
+        function centerMap() {
+            map.setView(userLocation, 13);
+        }
+
+        // Toggle Fullscreen Map
+        function toggleFullscreen() {
+            const mapContainer = document.querySelector('.map-container');
+            if (!document.fullscreenElement) {
+                mapContainer.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        // Refresh Map Data
+        function refreshMap() {
+            showLoading();
+            setTimeout(() => {
+                loadResources();
+                updateStats();
+                hideLoading();
+                showNotification('Map data refreshed successfully');
+            }, 1000);
+        }
+
+        // Emergency Functions
+        function callEmergency(type) {
+            const numbers = {
+                police: '100',
+                ambulance: '108',
+                fire: '101'
+            };
+            
+            if (confirm(`Call ${type.toUpperCase()} at ${numbers[type]}?`)) {
+                window.location.href = `tel:${numbers[type]}`;
+                showNotification(`Calling ${type.toUpperCase()}...`);
+            }
+        }
+
+        function requestAmbulance() {
+            showLoading();
+            setTimeout(() => {
+                hideLoading();
+                showNotification('Ambulance requested! ETA: 8 minutes');
+                addAlert('info', 'Ambulance Dispatched', 'An ambulance has been dispatched to your location.');
+            }, 1500);
+        }
+
+        function findNearestHospital() {
+            const hospitals = resources.filter(r => r.type === 'hospital');
+            if (hospitals.length > 0) {
+                const nearest = hospitals[0]; // Simplified - would calculate actual distance
+                focusResource(nearest.id);
+                showNotification(`Nearest hospital: ${nearest.name}`);
+            }
+        }
+
+        function checkBloodAvailability() {
+            showLoading();
+            setTimeout(() => {
+                hideLoading();
+                const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
+                const availability = bloodTypes.map(type => 
+                    `${type}: ${Math.random() > 0.3 ? 'Available' : 'Limited'}`
+                ).join(' | ');
+                
+                showNotification(`Blood Availability: ${availability}`);
+            }, 1000);
+        }
+
+        function showEmergencyContacts() {
+            const contacts = `
+                Emergency Contacts:
+                Police: 100
+                Ambulance: 108
+                Fire: 101
+                Women Helpline: 1091
+                Child Helpline: 1098
+            `;
+            alert(contacts);
+        }
+
+        // Alert System
+        function addAlert(type, title, message) {
+            const alertList = document.getElementById('alertList');
+            const alertItem = document.createElement('div');
+            alertItem.className = `alert-item ${type}`;
+            
+            const icons = {
+                critical: 'fa-exclamation-circle',
+                warning: 'fa-exclamation-triangle',
+                info: 'fa-info-circle'
+            };
+            
+            alertItem.innerHTML = `
+                <div class="alert-icon"><i class="fas ${icons[type]}"></i></div>
+                <div class="alert-content">
+                    <div class="alert-title">${title}</div>
+                    <div class="alert-message">${message}</div>
+                    <div class="alert-time">Just now</div>
+                </div>
+            `;
+            
+            alertList.insertBefore(alertItem, alertList.firstChild);
+            
+            // Keep only last 5 alerts
+            while (alertList.children.length > 5) {
+                alertList.removeChild(alertList.lastChild);
+            }
+        }
+
+        // Real-time Updates Simulation
+        function startRealTimeUpdates() {
+            setInterval(() => {
+                // Update alert time
+                document.getElementById('alertTime').textContent = 'Just now';
+                
+                // Simulate random resource status changes
+                if (Math.random() > 0.8) {
+                    const randomResource = resources[Math.floor(Math.random() * resources.length)];
+                    const statuses = ['available', 'limited', 'busy'];
+                    randomResource.status = statuses[Math.floor(Math.random() * statuses.length)];
+                    displayResources();
+                }
+                
+                // Update alert time periodically
+                setTimeout(() => {
+                    document.getElementById('alertTime').textContent = '2 mins ago';
+                }, 60000);
+            }, 30000); // Update every 30 seconds
+        }
+
+        // Utility Functions
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+        }
+
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function showNotification(message) {
+            // Create a professional notification toast
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 100px;
+                right: 20px;
+                background: linear-gradient(135deg, var(--card-bg), var(--darker-bg));
+                color: var(--text-primary);
+                padding: 1rem 1.5rem;
+                border-radius: 8px;
+                border: 1px solid var(--border-color);
+                box-shadow: var(--shadow-lg);
+                z-index: 10000;
+                animation: slideIn 0.3s ease;
+                backdrop-filter: blur(10px);
+                font-weight: 500;
+                max-width: 300px;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 4000);
+        }
+
+        // Add slide-in and slide-out animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            @keyframes slideOut {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (map) {
+                map.invalidateSize();
+            }
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+            if (e.ctrlKey && e.key === 'r') {
+                e.preventDefault();
+                refreshMap();
+            }
+        });
+    </script>
+</body>
+</html>
